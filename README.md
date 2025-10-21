@@ -53,8 +53,9 @@ sudo yum install docker -y
 sudo service docker start
 
 # Deploy
-docker build -t drviki-app .
-docker run -d -p 80:8080 drviki-app
+docker build -t doctor-viki-app .
+docker run -d -p 80:8080 doctor-viki-app
+
 ```
 
 ## Security & Cost Optimization
