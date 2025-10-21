@@ -58,7 +58,38 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Deploy to Railway
-      run: |
-        echo "Deployment would happen here with Railway CLI or API"
-        echo "For demo: docker build -t drviki-app ."
+    - name: Deploy to AWS EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          # Update system and install Docker if needed
+          sudo yum update -y
+          sudo yum install -y docker git
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -a -G docker $USER
+          
+          # Clone/update repository
+          cd /home/${{ secrets.EC2_USER }}
+          if [ -d "doctor-viki-app" ]; then
+            cd doctor-viki-app
+            git pull origin main
+          else
+            git clone https://github.com/${{ github.repository }}.git doctor-viki-app
+            cd doctor-viki-app
+          fi
+          
+          # Stop existing container
+          sudo docker stop drviki-app || true
+          sudo docker rm drviki-app || true
+          
+          # Build and run new container
+          sudo docker build -t drviki-app .
+          sudo docker run -d --name drviki-app -p 80:8080 --restart unless-stopped drviki-app
+          
+          # Verify deployment
+          sleep 10
+          curl -f http://localhost/health || exit 1
