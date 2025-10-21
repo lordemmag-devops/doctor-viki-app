@@ -1,0 +1,7 @@
+.git
+.github
+*.md
+.dockerignore
+docker-compose*.yml
+monitoring/
+test_local.sh

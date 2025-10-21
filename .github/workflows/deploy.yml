@@ -1,0 +1,64 @@
+name: Dr. ViKi DevOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Test application
+      run: |
+        python app.py &
+        sleep 5
+        curl -f http://localhost:8080/health || exit 1
+        pkill -f "python app.py"
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Docker image
+      run: |
+        docker build -t drviki-app .
+    
+    - name: Test Docker container
+      run: |
+        docker run -d -p 8080:8080 --name test-container drviki-app
+        sleep 10
+        curl -f http://localhost:8080/health || exit 1
+        docker stop test-container
+        docker rm test-container
+    
+    - name: Run security scan
+      run: |
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy:latest image drviki-app
+
+  deploy:
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to Railway
+      run: |
+        echo "Deployment would happen here with Railway CLI or API"
+        echo "For demo: docker build -t drviki-app ."
